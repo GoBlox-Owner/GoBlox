@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GoBlox | Plataforma de Desarrollo</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cannon.js/0.6.2/cannon.min.js"></script>
+    
+    <style>
+        /* --- VARIABLES DE DISEÑO (ROBLOX DARK THEME) --- */
+        :root {
+            --bg-deep: #191b1d;
+            --bg-nav: #232527;
+            --bg-card: #2e3033;
+            --border: #393b3d;
+            --text-main: #ffffff;
+            --text-gray: #b8b8b8;
+            --rbx-green: #00b06f;
+            --rbx-blue: #00a2ff;
+            --bacon-gold: #f1c40f;
+            --sidebar-width: 200px;
+        }
+
+        /* --- RESET Y BASE --- */
+        * { box-sizing: border-box; }
+        body, html {
+            margin: 0; padding: 0;
+            width: 100%; height: 100%;
+            background-color: var(--bg-deep);
+            color: var(--text-main);
+            font-family: 'Segoe UI', Arial, sans-serif;
+            overflow: hidden;
+        }
+
+        /* --- BARRA DE NAVEGACIÓN (TOP BAR) --- */
+        .header {
+            height: 45px;
+            background-color: var(--bg-nav);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 15px;
+            position: fixed; width: 100%; z-index: 1000;
+        }
+
+        .nav-left { display: flex; align-items: center; gap: 5px; }
+        .nav-logo {
+            font-size: 20px; font-weight: 900; color: #fff;
+            text-decoration: none; padding-right: 15px; cursor: pointer;
+        }
+
+        .top-btn {
+            color: var(--text-gray); text-decoration: none;
+            font-size: 14px; font-weight: 500; padding: 12px 12px;
+            cursor: pointer; transition: 0.2s;
+        }
+        .top-btn:hover { background: rgba(255,255,255,0.05); color: #fff; }
+
+        .nav-right { display: flex; align-items: center; gap: 15px; }
+        .bacon-counter {
+            display: flex; align-items: center; gap: 6px;
+            background: rgba(0,0,0,0.4); padding: 4px 12px;
+            border-radius: 20px; border: 1px solid var(--border);
+            font-weight: bold; color: var(--bacon-gold); cursor: default;
+        }
+
+        /* --- MENÚ LATERAL (SIDEBAR) --- */
+        .sidebar {
+            width: var(--sidebar-width);
+            background-color: var(--bg-deep);
+            border-right: 1px solid var(--border);
+            position: fixed; top: 45px; height: 100%;
+            padding: 10px; z-index: 900;
+        }
+
+        .side-link {
+            display: flex; align-items: center; gap: 12px;
+            padding: 10px 15px; border-radius: 8px;
+            color: var(--text-main); text-decoration: none;
+            font-size: 15px; margin-bottom: 4px; cursor: pointer;
+        }
+        .side-link:hover { background-color: var(--bg-card); }
+        .side-link.active { background-color: var(--bg-card); border-left: 4px solid var(--rbx-green); }
+
+        /* --- CONTENEDOR PRINCIPAL --- */
+        .main-container {
+            margin-left: var(--sidebar-width);
+            padding-top: 60px; height: 100vh;
+            overflow-y: auto; display: flex; flex-direction: column;
+            align-items: center;
+        }
+
+        .view-section { display: none; width: 95%; max-width: 1100px; padding: 20px; }
+        .active-section { display: block; animation: fadeIn 0.3s ease; }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* --- ELEMENTOS DE DISEÑO (CARDS) --- */
+        .welcome-banner {
+            background: linear-gradient(90deg, #2e3033, #232527);
+            padding: 30px; border-radius: 12px; border: 1px solid var(--border);
+            margin-bottom: 25px; position: relative;
+        }
+
+        .game-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 20px; margin-top: 15px;
+        }
+
+        .game-card {
+            background: var(--bg-card); border-radius: 8px;
+            overflow: hidden; border: 1px solid var(--border);
+            cursor: pointer; transition: 0.2s;
+        }
+        .game-card:hover { transform: translateY(-5px); border-color: #666; }
+        .game-thumb {
+            height: 180px; background: #3d3f42;
+            display: flex; align-items: center; justify-content: center; font-size: 50px;
+        }
+        .game-info { padding: 10px; font-size: 14px; }
+
+        /* --- TIENDA DE BACONS --- */
+        .shop-container { display: flex; gap: 20px; flex-wrap: wrap; }
+        .pack-card {
+            background: var(--bg-card); border: 1px solid var(--border);
+            border-radius: 12px; width: 250px; text-align: center;
+            padding: 25px; transition: 0.3s;
+        }
+        .pack-card:hover { border-color: var(--rbx-green); transform: scale(1.02); }
+        .pack-icon { font-size: 60px; margin-bottom: 15px; }
+        .buy-btn {
+            background-color: var(--rbx-green); color: white;
+            border: none; padding: 12px 0; width: 100%;
+            border-radius: 6px; font-weight: bold; cursor: pointer;
+            font-size: 16px; margin-top: 15px;
+        }
+        .buy-btn:hover { filter: brightness(1.1); }
+
+        /* --- MOTOR 3D (OVERLAY) --- */
+        #game-engine-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 2000; background: #000; display: none;
+        }
+        #ui-layer {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none; padding: 20px;
+        }
+        .engine-btn {
+            pointer-events: auto; background: rgba(0,0,0,0.6);
+            color: white; border: 1px solid #555; padding: 8px 15px;
+            border-radius: 4px; cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+
+    <header class="header">
+        <div class="nav-left">
+            <div class="nav-logo" onclick="changeTab('home')">GoBlox</div>
+            <div class="top-btn" onclick="changeTab('discover')">Descubrir</div>
+            <div class="top-btn" onclick="changeTab('avatar-shop')">Tienda de Avatares</div>
+            <div class="top-btn" onclick="changeTab('create')">Crear</div>
+        </div>
+        <div class="nav-right">
+            <div class="bacon-counter" title="Tus Bacons acumulados">
+                🥓 <span id="bacon-val">1.0M</span>
+            </div>
+            <div style="width: 30px; height: 30px; background: #666; border-radius: 50%; cursor:pointer;" onclick="changeTab('profile')"></div>
+        </div>
+    </header>
+
+    <nav class="sidebar">
+        <div class="side-link active" onclick="changeTab('home', this)">🏠 Inicio</div>
+        <div class="side-link" onclick="changeTab('profile', this)">👤 Perfil</div>
+        <div class="side-link" onclick="changeTab('shop', this)">🥓 Tienda Bacon</div>
+        <div class="side-link" onclick="changeTab('discover', this)">🎮 Juegos</div>
+        <div class="side-link" onclick="changeTab('settings', this)">⚙️ Configuración</div>
+    </nav>
+
+    <main class="main-container">
+        
+        <section id="home" class="view-section active-section">
+            <div class="welcome-banner">
+                <h1 style="margin:0;">Hola, @Jugador</h1>
+                <p style="color: var(--text-gray);">Bienvenido de nuevo a GoBlox. Tienes actualizaciones pendientes en tus juegos.</p>
+            </div>
+            
+            <h3>Continuar Jugando</h3>
+            <div class="game-grid">
+                <div class="game-card" onclick="bootEngine()">
+                    <div class="game-thumb">⚙️</div>
+                    <div class="game-info"><b>Juego Prueba Extrema</b><br><span style="color:var(--text-gray); font-size:12px;">98% Calificación</span></div>
+                </div>
+                <div class="game-card">
+                    <div class="game-thumb">📦</div>
+                    <div class="game-info"><b>Baseplate Obby</b><br><span style="color:var(--text-gray); font-size:12px;">Por GoBlox</span></div>
+                </div>
+            </div>
+        </section>
+
+        <section id="profile" class="view-section">
+            <div class="welcome-banner" style="display: flex; gap: 20px; align-items: center;">
+                <div style="width: 100px; height: 100px; background: #444; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 40px;">👤</div>
+                <div>
+                    <h1 style="margin:0;">GoBlox_Dev <span style="color:var(--rbx-blue); font-size: 18px;">🛡️</span></h1>
+                    <p>Miembro desde 2024 | Desarrollador Senior</p>
+                </div>
+            </div>
+            <h3>Mis Creaciones</h3>
+            <div class="game-grid">
+                <div class="game-card"><div class="game-thumb">➕</div><div class="game-info">Crear Nuevo</div></div>
+            </div>
+        </section>
+
+        <section id="shop" class="view-section">
+            <h1>Tienda de Bacons 🥓</h1>
+            <p style="color: var(--text-gray);">Compra suministros masivos. No somos P2W, ¡todo es para el desarrollo!</p>
+            
+            <div class="shop-container">
+                <div class="pack-card">
+                    <div class="pack-icon">💰</div>
+                    <h2>Bolsa Simple</h2>
+                    <p>+500,000 Bacons</p>
+                    <button class="buy-btn" onclick="addBacons(500000)">RECLAMAR</button>
+                </div>
+
+                <div class="pack-card" style="border: 2px solid var(--bacon-gold);">
+                    <div class="pack-icon">🏛️</div>
+                    <h2 style="color: var(--bacon-gold);">Pack Quadrillón</h2>
+                    <p>+1,000,000,000,000,000 Bacons</p>
+                    <button class="buy-btn" style="background: var(--bacon-gold); color: #000;" onclick="addBacons(1000000000000000)">RECLAMAR 1Qa</button>
+                </div>
+
+                <div class="pack-card">
+                    <div class="pack-icon">🌌</div>
+                    <h2>Suministro Galáctico</h2>
+                    <p>+500 Quadrillones</p>
+                    <button class="buy-btn" onclick="addBacons(500000000000000000)">RECLAMAR</button>
+                </div>
+            </div>
+        </section>
+
+        <section id="discover" class="view-section"><h1>Descubrir</h1><p>Buscando los mejores juegos para ti...</p></section>
+        <section id="avatar-shop" class="view-section"><h1>Tienda de Avatares</h1><p>Personaliza tu personaje (Próximamente).</p></section>
+        <section id="create" class="view-section"><h1>Panel de Creador</h1><p>Gestiona tus servidores y scripts.</p></section>
+
+    </main>
+
+    <div id="game-engine-overlay">
+        <div id="ui-layer">
+            <button class="engine-btn" onclick="killEngine()">ESC - SALIR DEL JUEGO</button>
+            <div style="margin-top: 10px; background: rgba(0,0,0,0.5); padding: 10px; border-radius: 5px; width: fit-content;">
+                <b>GoBlox Engine v3.0</b><br>
+                WASD: Moverse | Space: Saltar<br>
+                Shift: Bloqueo de Cámara
+            </div>
+        </div>
+        <div id="canvas-holder"></div>
+    </div>
+
+    <script>
+        // --- SISTEMA DE DATOS ---
+        let baconBalance = localStorage.getItem('gb_bacons') ? parseFloat(localStorage.getItem('gb_bacons')) : 1000000;
+
+        function updateBaconUI() {
+            let display = "";
+            if (baconBalance >= 1e15) {
+                display = (baconBalance / 1e15).toFixed(2) + "Qa+";
+            } else if (baconBalance >= 1e6) {
+                display = (baconBalance / 1e6).toFixed(1) + "M+";
+            } else {
+                display = baconBalance.toLocaleString();
+            }
+            document.getElementById('bacon-val').innerText = display;
+            localStorage.setItem('gb_bacons', baconBalance);
+        }
+
+        function addBacons(amt) {
+            baconBalance += amt;
+            updateBaconUI();
+            
+            // Animación pequeña en el contador
+            const counter = document.querySelector('.bacon-counter');
+            counter.style.transform = "scale(1.3)";
+            counter.style.backgroundColor = "rgba(241, 196, 15, 0.3)";
+            setTimeout(() => {
+                counter.style.transform = "scale(1)";
+                counter.style.backgroundColor = "rgba(0,0,0,0.4)";
+            }, 300);
+        }
+
+        // --- NAVEGACIÓN SPA ---
+        function changeTab(tabId, element) {
+            // Ocultar todas las secciones
+            document.querySelectorAll('.view-section').forEach(s => s.classList.remove('active-section'));
+            // Desactivar links del sidebar
+            document.querySelectorAll('.side-link').forEach(l => l.classList.remove('active'));
+
+            // Activar la seleccionada
+            const target = document.getElementById(tabId);
+            if(target) target.classList.add('active-section');
+            if(element) element.classList.add('active');
+        }
+
+        // --- MOTOR 3D (THREE.JS + CANNON.JS) ---
+        let scene, camera, renderer, world, playerBody, playerMesh, isRunning = false;
+        let keys = {};
+
+        function bootEngine() {
+            document.getElementById('game-engine-overlay').style.display = 'block';
+            if (!scene) init3D();
+            isRunning = true;
+            animate();
+        }
+
+        function killEngine() {
+            document.getElementById('game-engine-overlay').style.display = 'none';
+            isRunning = false;
+        }
+
+        function init3D() {
+            // Escena
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x87CEEB); // Cielo azul
+            
+            // Cámara
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            
+            // Render
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            document.getElementById('canvas-holder').appendChild(renderer.domElement);
+
+            // Físicas
+            world = new CANNON.World();
+            world.gravity.set(0, -28, 0);
+
+            // Suelo
+            const groundGeo = new THREE.PlaneGeometry(300, 300);
+            const groundMat = new THREE.MeshPhongMaterial({ color: 0x27ae60 });
+            const ground = new THREE.Mesh(groundGeo, groundMat);
+            ground.rotation.x = -Math.PI / 2;
+            ground.receiveShadow = true;
+            scene.add(ground);
+
+            const groundBody = new CANNON.Body({ mass: 0, shape: new CANNON.Plane() });
+            groundBody.quaternion.setFromAxisAngle(new CANNON.Vec3(1,0,0), -Math.PI/2);
+            world.addBody(groundBody);
+
+            // Jugador (Modelo Noob)
+            playerMesh = new THREE.Group();
+            const bodyPart = new THREE.Mesh(new THREE.BoxGeometry(1, 1.2, 0.6), new THREE.MeshPhongMaterial({color: 0x0055ff}));
+            const headPart = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.5, 0.5), new THREE.MeshPhongMaterial({color: 0xffcc00}));
+            headPart.position.y = 0.9;
+            playerMesh.add(bodyPart, headPart);
+            playerMesh.castShadow = true;
+            scene.add(playerMesh);
+
+            playerBody = new CANNON.Body({ 
+                mass: 1, 
+                shape: new CANNON.Box(new CANNON.Vec3(0.5, 1, 0.3)),
+                fixedRotation: true 
+            });
+            playerBody.position.set(0, 5, 0);
+            world.addBody(playerBody);
+
+            // Iluminación
+            const sun = new THREE.DirectionalLight(0xffffff, 1);
+            sun.position.set(10, 20, 10);
+            sun.castShadow = true;
+            scene.add(sun);
+            scene.add(new THREE.AmbientLight(0xffffff, 0.5));
+
+            // Controles
+            window.addEventListener('keydown', e => keys[e.code] = true);
+            window.addEventListener('keyup', e => keys[e.code] = false);
+            window.addEventListener('keydown', e => { if(e.key === "Escape") killEngine(); });
+        }
+
+        function animate() {
+            if (!isRunning) return;
+            requestAnimationFrame(animate);
+
+            world.step(1/60);
+
+            // Movimiento Lógica
+            const speed = 12;
+            let vx = 0, vz = 0;
+            if (keys['KeyW']) vz -= 1;
+            if (keys['KeyS']) vz += 1;
+            if (keys['KeyA']) vx -= 1;
+            if (keys['KeyD']) vx += 1;
+
+            playerBody.velocity.x = vx * speed;
+            playerBody.velocity.z = vz * speed;
+
+            if (keys['Space'] && Math.abs(playerBody.velocity.y) < 0.1) {
+                playerBody.velocity.y = 15;
+            }
+
+            playerMesh.position.copy(playerBody.position);
+            
+            // Seguimiento de Cámara
+            camera.position.set(playerMesh.position.x, playerMesh.position.y + 8, playerMesh.position.z + 15);
+            camera.lookAt(playerMesh.position);
+
+            renderer.render(scene, camera);
+        }
+
+        // Inicializar UI
+        updateBaconUI();
+
+    </script>
+</body>
+</html>
